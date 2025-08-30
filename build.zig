@@ -122,7 +122,7 @@ fn compile_c_file(b: *std.Build, lto: bool, src_file: []const u8, folder: *const
     }
 }
 
-fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir) *std.Build.Step.Run {
+fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: std.Build.LazyPath) *std.Build.Step.Run {
     const c_files = utils.recursive_search_c_files(b.allocator, b.path("src").getPath3(b, null), "src") catch {
         std.debug.panic("unable to list C files", .{});
     };
@@ -134,14 +134,24 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir) *std.Buil
         };
     }
 
+    const path = ti_lib.getPath3(b, null).toString(b.allocator) catch {
+        std.debug.panic("unable to get ti_lib path", .{});
+    };
+
+    const absolute_path_main = b.path("src/main.zig").getPath3(b, null).toString(b.allocator) catch {
+        std.debug.panic("unable to get absolute path for main.zig", .{});
+    };
+
     utils.exec(b.allocator, "zig-out", &.{
         "zig",
         "build-obj",
         "-isystem",
         "CEdev/include",
+        "-I",
+        path,
         "-I../src",
         "-ofmt=c",
-        "../src/main.zig",
+        absolute_path_main,
         "-O",
         "ReleaseSmall",
         "-fsingle-threaded",
@@ -149,7 +159,7 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir) *std.Buil
         "-target",
         "avr-freestanding-eabi",
         "-femit-bin=main.c",
-    }) catch {
+    }, .{ .enable_stdout = true, .enable_stderr = true }) catch {
         std.debug.panic("unable to build main.c", .{});
     };
     // c_file.cwd = b.path("zig-out");
@@ -256,16 +266,18 @@ pub fn build(b: *std.Build) !void {
         std.debug.panic("unable to join paths", .{});
     };
     if (try utils.ensure_file(b.allocator, path_zig_out, "zig.h", "https://raw.githubusercontent.com/ziglang/zig/refs/tags/0.14.1/lib/zig.h")) {
-        try utils.exec(b.allocator, path_zig_out, &.{ "sed", "-i", "s/#define zig_c11_atomics/#define zig_c11_atomics_disabled/g", "zig.h" });
+        try utils.exec(b.allocator, path_zig_out, &.{ "sed", "-i", "s/#define zig_c11_atomics/#define zig_c11_atomics_disabled/g", "zig.h" }, .{});
     }
 
     folder.makeDir("zig-out/obj") catch {};
     folder.makeDir("zig-out/obj/src") catch {};
     folder.makeDir("zig-out/obj/zig-out") catch {};
 
+    const ti_lib = b.dependency("ti83_zig_lib", .{});
+
     const lto = true;
 
-    const obj_src = create_obj_src(b, lto, &folder);
+    const obj_src = create_obj_src(b, lto, &folder, ti_lib.path("include"));
 
     const icon = b.addSystemCommand(&.{
         "../CEdev/bin/convimg",

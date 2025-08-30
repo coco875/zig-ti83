@@ -3,6 +3,11 @@ const fs = std.fs;
 const dirname = std.fs.path.dirname;
 const basename = std.fs.path.basename;
 
+pub const Options = struct {
+    enable_stdout: bool = false,
+    enable_stderr: bool = false,
+};
+
 /// Looks for build.zig by traversing from current directory and upwards,
 /// ideal for setting builder.build_root starting from builder.build_root
 pub fn root(cwd: []const u8) ![]const u8 {
@@ -15,13 +20,13 @@ pub fn root(cwd: []const u8) ![]const u8 {
 }
 
 /// Run shell command
-pub fn exec(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const u8) !void {
+pub fn exec(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const u8, opts: Options) !void {
     var child = std.process.Child.init(argv, allocator);
     child.cwd = cwd;
     // Comportement des flux selon options
-    child.stdin_behavior = .Pipe;
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
+    child.stdin_behavior = .Ignore;
+    child.stdout_behavior = if (opts.enable_stdout) .Inherit else .Ignore;
+    child.stderr_behavior = if (opts.enable_stderr) .Inherit else .Ignore;
 
     try child.spawn();
     const term = child.wait() catch |err| {
@@ -30,9 +35,8 @@ pub fn exec(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const
     };
 
     if (term.Exited != 0) {
-        std.debug.print("Command failed with exit code: {}\n", .{term.Exited});
-        std.debug.print("Output:\n{s}", .{child.stdout.?.readToEndAlloc(allocator, 0x1000000) catch ""});
-        std.debug.print("Error:\n{s}", .{child.stderr.?.readToEndAlloc(allocator, 0x1000000) catch ""});
+        const command = std.mem.join(allocator, " ", argv) catch "unknown command";
+        std.debug.print("Command failed: {s}\n", .{command});
         return error.CommandFailed;
     }
 }
@@ -40,8 +44,8 @@ pub fn exec(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const
 pub fn ensure_tar(allocator: std.mem.Allocator, cwd: []const u8, path: []const u8, url: []const u8) !void {
     const folder = try std.fs.openDirAbsolute(cwd, .{});
     folder.access(path, .{}) catch |err| if (err == error.FileNotFound) {
-        try exec(allocator, cwd, &.{ "wget", "-q", url });
-        try exec(allocator, cwd, &.{ "tar", "-xf", basename(url) });
+        try exec(allocator, cwd, &.{ "wget", "-q", url }, .{});
+        try exec(allocator, cwd, &.{ "tar", "-xf", basename(url) }, .{});
         try folder.deleteFile(basename(url));
     };
 }
@@ -49,7 +53,7 @@ pub fn ensure_tar(allocator: std.mem.Allocator, cwd: []const u8, path: []const u
 pub fn ensure_file(allocator: std.mem.Allocator, cwd: []const u8, path: []const u8, url: []const u8) !bool {
     const folder = try std.fs.openDirAbsolute(cwd, .{});
     folder.access(path, .{}) catch |err| if (err == error.FileNotFound) {
-        try exec(allocator, cwd, &.{ "wget", "-q", url });
+        try exec(allocator, cwd, &.{ "wget", "-q", url }, .{});
         return false;
     };
     return true;
