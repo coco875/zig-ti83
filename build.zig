@@ -142,7 +142,7 @@ fn compile_c_file(b: *std.Build, lto: bool, src_file: []const u8, folder: *const
     }
 }
 
-fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: std.Build.LazyPath) *std.Build.Step.Run {
+fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: std.Build.LazyPath) struct { file: []const u8, runner: *std.Build.Step.Run } {
     const c_files = utils.recursive_search_c_files(b.allocator, b.path("src").getPath3(b, null), "src") catch {
         std.debug.panic("unable to list C files", .{});
     };
@@ -227,9 +227,9 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: s
         });
         obj_src.cwd = b.path("zig-out");
         obj_src.step.dependOn(&obj_lto_bc.step);
-        return obj_src;
+        return .{ .file = "obj/lto.src", .runner = obj_src };
     } else {
-        return compiled.runner;
+        return .{ .file = compiled.file, .runner = compiled.runner };
     }
 }
 
@@ -295,7 +295,7 @@ pub fn build(b: *std.Build) !void {
 
     const ti_lib = b.dependency("ti83_zig_lib", .{});
 
-    const lto = true;
+    const lto = false;
 
     const obj_src = create_obj_src(b, lto, &folder, ti_lib.path("include"));
 
@@ -311,6 +311,14 @@ pub fn build(b: *std.Build) !void {
         "CE C Toolchain Demo",
     });
     icon.cwd = b.path("zig-out");
+
+    var all_sources = std.ArrayList(u8).init(b.allocator);
+    try all_sources.appendSlice("source ");
+    try all_sources.appendSlice("\"obj/icon.src\", ");
+    try all_sources.appendSlice("\"../CEdev/lib/crt/crt0.src\", ");
+    try all_sources.appendSlice("\"");
+    try all_sources.appendSlice(obj_src.file);
+    try all_sources.appendSlice("\"");
 
     const bin = b.addSystemCommand(&.{
         "../CEdev/bin/fasmg",
@@ -341,14 +349,14 @@ pub fn build(b: *std.Build) !void {
         "-i",
         "map",
         "-i",
-        "source \"obj/icon.src\", \"../CEdev/lib/crt/crt0.src\", \"obj/lto.src\"",
+        all_sources.items,
         "-i",
         "library \"../CEdev/lib/libload/fatdrvce.lib\", \"../CEdev/lib/libload/fileioc.lib\", \"../CEdev/lib/libload/fontlibc.lib\", \"../CEdev/lib/libload/graphx.lib\", \"../CEdev/lib/libload/keypadc.lib\", \"../CEdev/lib/libload/msddrvce.lib\", \"../CEdev/lib/libload/srldrvce.lib\", \"../CEdev/lib/libload/usbdrvce.lib\"",
         "DEMO.bin",
     });
     bin.cwd = b.path("zig-out");
     bin.step.dependOn(&icon.step);
-    bin.step.dependOn(&obj_src.step);
+    bin.step.dependOn(&obj_src.runner.step);
 
     const rom = b.addSystemCommand(&.{
         "../CEdev/bin/convbin",
