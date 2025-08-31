@@ -34,10 +34,22 @@ pub fn exec(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const
         return err;
     };
 
-    if (term.Exited != 0) {
-        const command = std.mem.join(allocator, " ", argv) catch "unknown command";
-        std.debug.print("Command failed: {s}\n", .{command});
-        return error.CommandFailed;
+    switch (term) {
+        .Exited => |code| if (code != 0) {
+            const command = std.mem.join(allocator, " ", argv) catch "unknown command";
+            std.debug.print("Command failed (exit {d}): {s}\n", .{ code, command });
+            return error.CommandFailed;
+        },
+        .Signal => |sig| {
+            const command = std.mem.join(allocator, " ", argv) catch "unknown command";
+            std.debug.print("Command killed by signal {d}: {s}\n", .{ sig, command });
+            return error.CommandFailed;
+        },
+        else => {
+            const command = std.mem.join(allocator, " ", argv) catch "unknown command";
+            std.debug.print("Command terminated abnormally: {s}\n", .{command});
+            return error.CommandFailed;
+        },
     }
 }
 
