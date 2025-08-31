@@ -175,9 +175,9 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: s
         "-O",
         "ReleaseSmall",
         "-fsingle-threaded",
-        "-fstrip",
+        "-fno-strip",
         "-target",
-        "avr-freestanding-eabi",
+        "arm-freestanding-eabi",
         "-femit-bin=main.c",
     }, .{ .enable_stdout = true, .enable_stderr = true }) catch {
         std.debug.panic("unable to build main.c", .{});
@@ -317,7 +317,7 @@ pub fn build(b: *std.Build) !void {
         "-v1",
         "../CEdev/meta/ld.alm",
         "-i",
-        "DEBUG := 0",
+        "DEBUG := 1",
         "-i",
         "HAS_PRINTF := 1",
         "-i",
