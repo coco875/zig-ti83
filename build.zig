@@ -1,16 +1,38 @@
 const std = @import("std");
 const utils = @import("utils.zig");
 
-const function_patch: []const []const u8 = &.{
-    // screen.h
-    "void os_NewLine(",
-    "void os_MoveUp(",
-    "void os_MoveDown(",
-    "void os_HomeUp(",
-    "void os_ClrLCDFull(",
-    "void os_ClrLCD(",
-    "void os_ClrTxtShd(",
+const function_patch: []const []const []const u8 = &.{
+    // sys/power.h
+    &.{"void os_DisableAPD("},
+    &.{"void os_EnableAPD("},
+    &.{"uint8_t boot_GetBatteryStatus("},
+    // ti/real.h
+    &.{ "struct_real_t", "os_Int24ToReal(" },
+    // ti/screen.h
+    &.{"void os_NewLine("},
+    &.{"void os_MoveUp("},
+    &.{"void os_MoveDown("},
+    &.{"void os_HomeUp("},
+    &.{"void os_ClrLCDFull("},
+    &.{"void os_ClrLCD("},
+    &.{"void os_ClrTxtShd("},
+    // ti/ui.h
+    &.{"void os_RunIndicOn("},
+    &.{"void os_RunIndicOff("},
+    &.{"void os_DrawStatusBar("},
+    // ti/vars.h
+    &.{"void os_ArcChk("},
+    &.{"void os_DelRes("},
 };
+
+fn all_match(haystack: []const u8, needles: []const []const u8) bool {
+    for (needles) |needle| {
+        if (std.mem.count(u8, haystack, needle) == 0) {
+            return false;
+        }
+    }
+    return true;
+}
 
 fn patch_transcompiled_file(b: *std.Build, file_path: []const u8, output: []const u8) !void {
     const prefix = "__attribute__((__tiflags__))";
@@ -27,7 +49,7 @@ fn patch_transcompiled_file(b: *std.Build, file_path: []const u8, output: []cons
     while (try reader.readUntilDelimiterOrEofAlloc(b.allocator, '\n', 0x1000000)) |line| {
         var have_patch = false;
         for (function_patch) |func| {
-            if (std.mem.count(u8, line, func) != 0) {
+            if (all_match(line, func)) {
                 var new_line = std.ArrayList(u8).init(b.allocator);
                 defer new_line.deinit();
                 new_line.appendSlice(prefix) catch {};
