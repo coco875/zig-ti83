@@ -93,8 +93,6 @@ fn compile_c_file(b: *std.Build, lto: bool, src_file: []const u8, folder: *const
             "-fno-sanitize-thread-atomics",
             "-Xclang",
             "-fforce-mangle-main-argc-argv",
-            "-fdata-sections",
-            "-ffunction-sections",
             "-mllvm",
             "-profile-guided-section-prefix=false",
             "-DNDEBUG",
