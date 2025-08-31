@@ -285,7 +285,7 @@ pub fn build(b: *std.Build) !void {
     const path_zig_out = std.fs.path.join(b.allocator, &.{ root_path, "zig-out" }) catch {
         std.debug.panic("unable to join paths", .{});
     };
-    if (try utils.ensure_file(b.allocator, path_zig_out, "zig.h", "https://raw.githubusercontent.com/ziglang/zig/refs/tags/0.14.1/lib/zig.h")) {
+    if (!try utils.ensure_file(b.allocator, path_zig_out, "zig.h", "https://raw.githubusercontent.com/ziglang/zig/refs/tags/0.14.1/lib/zig.h")) {
         try utils.exec(b.allocator, path_zig_out, &.{ "sed", "-i", "s/#define zig_c11_atomics/#define zig_c11_atomics_disabled/g", "zig.h" }, .{});
     }
 
