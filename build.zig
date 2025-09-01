@@ -174,6 +174,7 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: s
         absolute_path_main,
         "-O",
         "ReleaseSmall",
+        "-lc",
         "-fsingle-threaded",
         "-fno-strip",
         "-target",
@@ -287,6 +288,7 @@ pub fn build(b: *std.Build) !void {
     };
     if (!try utils.ensure_file(b.allocator, path_zig_out, "zig.h", "https://raw.githubusercontent.com/ziglang/zig/refs/tags/0.14.1/lib/zig.h")) {
         try utils.exec(b.allocator, path_zig_out, &.{ "sed", "-i", "s/#define zig_c11_atomics/#define zig_c11_atomics_disabled/g", "zig.h" }, .{});
+        try utils.exec(b.allocator, path_zig_out, &.{ "sed", "-i", "s/#define zig_return_address() __builtin_extract_return_addr(__builtin_return_address(0))/#define zig_return_address() 0/g", "zig.h" }, .{});
     }
 
     folder.makeDir("zig-out/obj") catch {};
