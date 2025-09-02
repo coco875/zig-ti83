@@ -263,6 +263,13 @@ pub fn build(b: *std.Build) !void {
     folder.makeDir("zig-out/obj/src") catch {};
     folder.makeDir("zig-out/obj/zig-out") catch {};
 
+    const debug = true;
+    const has_printf = true;
+    const has_libc = true;
+    const prefer_os_crt = false;
+    const prefer_os_libc = true;
+    const allocator_standard = true;
+
     const ti_lib = b.dependency("ti83_zig_lib", .{});
 
     const lto = false;
@@ -290,24 +297,72 @@ pub fn build(b: *std.Build) !void {
     try all_sources.appendSlice(obj_src.file);
     try all_sources.appendSlice("\"");
 
+    var debug_arg = std.ArrayList(u8).init(b.allocator);
+    try debug_arg.appendSlice("DEBUG := ");
+    if (debug) {
+        try debug_arg.appendSlice("1");
+    } else {
+        try debug_arg.appendSlice("0");
+    }
+
+    var has_printf_arg = std.ArrayList(u8).init(b.allocator);
+    try has_printf_arg.appendSlice("HAS_PRINTF := ");
+    if (has_printf) {
+        try has_printf_arg.appendSlice("1");
+    } else {
+        try has_printf_arg.appendSlice("0");
+    }
+
+    var has_libc_arg = std.ArrayList(u8).init(b.allocator);
+    try has_libc_arg.appendSlice("HAS_LIBC := ");
+    if (has_libc) {
+        try has_libc_arg.appendSlice("1");
+    } else {
+        try has_libc_arg.appendSlice("0");
+    }
+
+    var prefer_os_crt_arg = std.ArrayList(u8).init(b.allocator);
+    try prefer_os_crt_arg.appendSlice("PREFER_OS_CRT := ");
+    if (prefer_os_crt) {
+        try prefer_os_crt_arg.appendSlice("1");
+    } else {
+        try prefer_os_crt_arg.appendSlice("0");
+    }
+
+    var prefer_os_libc_arg = std.ArrayList(u8).init(b.allocator);
+    try prefer_os_libc_arg.appendSlice("PREFER_OS_LIBC := ");
+    if (prefer_os_libc) {
+        try prefer_os_libc_arg.appendSlice("1");
+    } else {
+        try prefer_os_libc_arg.appendSlice("0");
+    }
+
+    var allocator_standard_arg = std.ArrayList(u8).init(b.allocator);
+    try allocator_standard_arg.appendSlice("ALLOCATOR_STANDARD := ");
+    if (allocator_standard) {
+        try allocator_standard_arg.appendSlice("1");
+    } else {
+        try allocator_standard_arg.appendSlice("0");
+    }
+
     const bin = b.addSystemCommand(&.{
         "../CEdev/bin/fasmg",
         "-v1",
         "../CEdev/meta/ld.alm",
         "-i",
-        "DEBUG := 1",
+        debug_arg.items,
         "-i",
-        "HAS_PRINTF := 1",
+        has_printf_arg.items,
         "-i",
-        "HAS_LIBC := 1",
+        has_libc_arg.items,
         "-i",
-        "HAS_LIBCXX := 1",
+        "HAS_LIBCXX := 0",
         "-i",
-        "PREFER_OS_CRT := 0",
+        prefer_os_crt_arg.items,
         "-i",
-        "PREFER_OS_LIBC := 1",
+        prefer_os_libc_arg.items,
         "-i",
-        "ALLOCATOR_STANDARD := 1",
+        allocator_standard_arg.items,
         "-i",
         "include \"../CEdev/meta/linker_script\"",
         "-i",
