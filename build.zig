@@ -1,6 +1,20 @@
 const std = @import("std");
 const utils = @import("utils.zig");
 
+const debug = true;
+const has_printf = true;
+const has_libc = true;
+const prefer_os_crt = false;
+const prefer_os_libc = true;
+const allocator_standard = true;
+
+const src_zig = "src/main.zig";
+
+const description = "CE C Toolchain Demo";
+
+const name = "DEMO";
+const output_file = name ++ ".8xp";
+
 const function_patch: []const []const []const u8 = &.{
     // sys/power.h
     &.{"void os_DisableAPD("},
@@ -34,14 +48,14 @@ fn all_match(haystack: []const u8, needles: []const []const u8) bool {
     return true;
 }
 
-fn patch_transcompiled_file(b: *std.Build, file_path: []const u8, output: []const u8) !void {
+fn patch_transcompiled_file(b: *std.Build, file_path: []const u8, patched_output: []const u8) !void {
     const prefix = "__attribute__((__tiflags__))";
 
     var file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
     defer file.close();
 
-    var output_file = try std.fs.cwd().createFile(output, .{});
-    defer output_file.close();
+    var patched_output_file = try std.fs.cwd().createFile(patched_output, .{});
+    defer patched_output_file.close();
 
     var buf_reader = std.io.bufferedReader(file.reader());
     const reader = buf_reader.reader();
@@ -55,15 +69,15 @@ fn patch_transcompiled_file(b: *std.Build, file_path: []const u8, output: []cons
                 new_line.appendSlice(prefix) catch {};
                 new_line.appendSlice(" ") catch {};
                 new_line.appendSlice(line) catch {};
-                try output_file.writer().writeAll(new_line.items);
+                try patched_output_file.writer().writeAll(new_line.items);
                 have_patch = true;
                 break;
             }
         }
         if (!have_patch) {
-            try output_file.writer().writeAll(line);
+            try patched_output_file.writer().writeAll(line);
         }
-        try output_file.writer().writeByte('\n');
+        try patched_output_file.writer().writeByte('\n');
     }
 }
 
@@ -95,7 +109,7 @@ fn compile_c_file(b: *std.Build, lto: bool, src_file: []const u8, folder: *const
             "-fforce-mangle-main-argc-argv",
             "-mllvm",
             "-profile-guided-section-prefix=false",
-            "-DNDEBUG",
+            // "-DNDEBUG",
             "-g0",
             "-Wall",
             "-Wextra",
@@ -128,7 +142,7 @@ fn compile_c_file(b: *std.Build, lto: bool, src_file: []const u8, folder: *const
             "-fforce-mangle-main-argc-argv",
             "-mllvm",
             "-profile-guided-section-prefix=false",
-            "-DNDEBUG",
+            // "-DNDEBUG",
             "-g0",
             "-Wall",
             "-Wextra",
@@ -158,7 +172,7 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: s
         std.debug.panic("unable to get ti_lib path", .{});
     };
 
-    const absolute_path_main = b.path("src/main.zig").getPath3(b, null).toString(b.allocator) catch {
+    const absolute_path_main = b.path(src_zig).getPath3(b, null).toString(b.allocator) catch {
         std.debug.panic("unable to get absolute path for main.zig", .{});
     };
 
@@ -263,13 +277,6 @@ pub fn build(b: *std.Build) !void {
     folder.makeDir("zig-out/obj/src") catch {};
     folder.makeDir("zig-out/obj/zig-out") catch {};
 
-    const debug = true;
-    const has_printf = true;
-    const has_libc = true;
-    const prefer_os_crt = false;
-    const prefer_os_libc = true;
-    const allocator_standard = true;
-
     const ti_lib = b.dependency("ti83_zig_lib", .{});
 
     const lto = false;
@@ -285,7 +292,7 @@ pub fn build(b: *std.Build) !void {
         "--icon-format",
         "asm",
         "--icon-description",
-        "CE C Toolchain Demo",
+        description,
     });
     icon.cwd = b.path("zig-out");
 
@@ -377,7 +384,7 @@ pub fn build(b: *std.Build) !void {
         all_sources.items,
         "-i",
         "library \"../CEdev/lib/libload/fatdrvce.lib\", \"../CEdev/lib/libload/fileioc.lib\", \"../CEdev/lib/libload/fontlibc.lib\", \"../CEdev/lib/libload/graphx.lib\", \"../CEdev/lib/libload/keypadc.lib\", \"../CEdev/lib/libload/msddrvce.lib\", \"../CEdev/lib/libload/srldrvce.lib\", \"../CEdev/lib/libload/usbdrvce.lib\"",
-        "DEMO.bin",
+        name ++ ".bin",
     });
     bin.cwd = b.path("zig-out");
     bin.step.dependOn(&icon.step);
@@ -390,11 +397,11 @@ pub fn build(b: *std.Build) !void {
         "8xp",
         "-u",
         "-n",
-        "DEMO",
+        name,
         "-i",
-        "DEMO.bin",
+        name ++ ".bin",
         "-o",
-        "DEMO.8xp",
+        output_file,
     });
     rom.cwd = b.path("zig-out");
     rom.step.dependOn(&bin.step);
