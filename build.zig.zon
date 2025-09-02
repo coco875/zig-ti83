@@ -37,8 +37,8 @@
     // internet connectivity.
     .dependencies = .{
         .ti83_zig_lib = .{
-            .url = "https://github.com/coco875/ti83-zig-lib/archive/refs/tags/v0.0.1.zip",
-            .hash = "ti83_zig_lib-0.0.0-IqXjX2gfCAACgUdV4sH7TI7Owx0qiCvOTeueDqWI0gJe",
+            .url = "https://github.com/coco875/ti83-zig-lib/archive/refs/tags/v0.0.2.zip",
+            .hash = "ti83_zig_lib-0.0.0-IqXjX9EgCABdrHTsS0EhOX_rxc44dKAoE7VtVPCR07_m",
         },
     },
     .paths = .{

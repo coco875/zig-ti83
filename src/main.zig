@@ -8,7 +8,7 @@ const dbgout: [*c]u8 = @ptrFromInt(0xFB0000);
 pub export fn main() c_int {
     ti_screen.os_ClrHome();
 
-    var array = std.ArrayList(u8).init(std.heap.raw_c_allocator);
+    var array = std.ArrayList(u8).init(std.heap.c_allocator);
     defer array.deinit();
     array.appendSlice("Hello, World!\n") catch return 1;
     array.append(0) catch return 1;

@@ -234,38 +234,6 @@ fn create_obj_src(b: *std.Build, lto: bool, folder: *const std.fs.Dir, ti_lib: s
     }
 }
 
-fn comment_atomic(b: *std.Build, file_path: []const u8, file_out_path: []const u8) !void {
-    var file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_write });
-    defer file.close();
-
-    var output_file = try std.fs.cwd().createFile(file_out_path, .{});
-    defer output_file.close();
-
-    var buf_reader = std.io.bufferedReader(file.reader());
-    const reader = buf_reader.reader();
-
-    var lines = std.ArrayList([]const u8).init(b.allocator);
-    defer lines.deinit();
-    while (try reader.readUntilDelimiterOrEofAlloc(b.allocator, '\n', 0x1000000)) |line| {
-        if (std.mem.startsWith(u8, line, "#define zig_c11_atomics")) {
-            var new_line = std.ArrayList(u8).init(b.allocator);
-            defer new_line.deinit();
-            new_line.appendSlice("// ") catch {};
-            new_line.appendSlice(line) catch {};
-            try lines.append(new_line.items);
-            std.debug.print("Commented atomic line in {s}\n", .{line});
-            std.debug.print("Commented atomic line in {s}\n", .{new_line.items});
-        } else {
-            try lines.append(line);
-        }
-    }
-
-    for (lines.items) |line| {
-        try output_file.writer().writeAll(line);
-        try output_file.writer().writeByte('\n');
-    }
-}
-
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
