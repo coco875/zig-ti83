@@ -1,6 +1,6 @@
-# Zig TI-83+
+# Zig TI-84+/83-Premium-CE
 
-Experimental repo to run Zig code on the TI‑83+ (ez80) by emitting C and compiling with the [CE-Programming ez80 LLVM fork](https://github.com/CE-Programming/llvm-project).
+Experimental repo to run Zig code on the TI‑84+/83-Premium-CE (ez80) by emitting C and compiling with the [CE-Programming ez80 LLVM fork](https://github.com/CE-Programming/llvm-project).
 
 ## Status
 
